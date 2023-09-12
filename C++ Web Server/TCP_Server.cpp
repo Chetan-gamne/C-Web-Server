@@ -1,5 +1,6 @@
 #include "TCP_Server.h"
-
+#include "Response.h"
+#include "Request.h"
 http::Server::Server() {
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 		std::cerr << "WSAStartup failed with error: " << WSAGetLastError() << std::endl;
@@ -12,11 +13,16 @@ http::Server::Server() {
 }
 
 std::string http::Server::generateHTTPResponse(const std::string& content) {
-    std::string response = "HTTP/1.1 200 OK\r\n";
-    response += "Content-Type: text/html\r\n";
-    response += "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n";
-    response += content;
-    return response;
+    Response response;
+
+    response.setHeader("Content-Type", "text/html");
+    response.setHeader("Server", "MyWebServer");
+
+    response.setBody(content);
+
+    std::string httpResponse = response.generateResponse();
+
+    return httpResponse;
 }
 
 void http::Server::listenToServer(int port) {
@@ -49,25 +55,28 @@ void http::Server::listenToServer(int port) {
         char buff[30720] = { 0 };
         int bytes = recv(new_wsocket, buff, BUFFER_SIZE, 0);
         std::cout << "Request: " << buff << std::endl;
+        std::string rawRequest(buff);
+        Request req(rawRequest);
         if (bytes <= 0) {
             std::cerr << "Receive failed or connection closed." << std::endl;
         }
         else {
             std::string request = buff; // Convert char array to string
-            std::string method; // Store the HTTP method (GET, POST, etc.)
-            std::string urlPath; // Store the requested URL path
+            std::string method = req.getMethod();
+            std::string urlPath = req.getPath();
 
-            size_t methodEndPos = request.find(' ');
+
+            /*size_t methodEndPos = request.find(' ');
             if (methodEndPos != std::string::npos) {
                 method = request.substr(0, methodEndPos);
                 request = request.substr(methodEndPos + 1);
-            }
+            }*/
 
             // Find the second space to identify the URL path
-            size_t pathEndPos = request.find(' ');
+            /*size_t pathEndPos = request.find(' ');
             if (pathEndPos != std::string::npos) {
                 urlPath = request.substr(0, pathEndPos);
-            }
+            }*/
             
             auto handlerIter = routeHandlers.find(urlPath);
 
@@ -103,12 +112,9 @@ void http::Server::sendResponse(SOCKET socket, const std::string& response) {
 }
 
 
-
-
 void http::Server::registerRoute(const std::string& route, RequestHandler handler) {
     routeHandlers[route] = handler;
 }
-
 
 
 http::Server::~Server() {

@@ -19,7 +19,6 @@ namespace http {
 
 			void listenToServer(int port);
 
-
 			void sendResponse(SOCKET socket, const std::string& response);
 
 			~Server();
